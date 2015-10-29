@@ -20,8 +20,9 @@ module GeoJSON
         @eval print(io::IO, obj::GeoInterface.$geom) = JSON.print(io, geojson(obj))
     end
 
-    dict2geo(obj::Nothing) = obj
-    function dict2geo(obj::Dict{String,Any})
+    dict2geo(obj::Void) = nothing
+    
+    function dict2geo(obj::Dict{AbstractString,Any})
         t = symbol(obj["type"])
         if t == :FeatureCollection
             return parseFeatureCollection(obj)
@@ -44,9 +45,9 @@ module GeoJSON
         end
     end
 
-    parseGeometryCollection(obj::Dict{String,Any}) = GeoInterface.GeometryCollection(map(dict2geo,obj["geometries"]))
+    parseGeometryCollection(obj::Dict{AbstractString,Any}) = GeoInterface.GeometryCollection(map(dict2geo,obj["geometries"]))
 
-    function parseFeature(obj::Dict{String,Any})
+    function parseFeature(obj::Dict{AbstractString,Any})
         feature = GeoInterface.Feature(dict2geo(obj["geometry"]), obj["properties"])
         if haskey(obj, "id")
             feature.properties["featureid"] = obj["id"]
@@ -60,7 +61,7 @@ module GeoJSON
         feature
     end
 
-    function parseFeatureCollection(obj::Dict{String,Any})
+    function parseFeatureCollection(obj::Dict{AbstractString,Any})
         features = GeoInterface.Feature[map(parseFeature,obj["features"])...]
         featurecollection = GeoInterface.FeatureCollection(features)
         if haskey(obj, "bbox")
@@ -72,22 +73,22 @@ module GeoJSON
         featurecollection
     end
 
-    geojson(obj::Nothing) = obj
+    geojson(obj::Void) = nothing
 
     function geojson(obj::GeoInterface.AbstractGeometry)
-        ["type" => string(GeoInterface.geotype(obj)),
-         "coordinates" => GeoInterface.coordinates(obj)]
+        Dict("type" => string(GeoInterface.geotype(obj)),
+             "coordinates" => GeoInterface.coordinates(obj))
     end
 
     function geojson(obj::GeoInterface.AbstractGeometryCollection)
-        ["type" => string(GeoInterface.geotype(obj)),
-         "geometries" => map(geojson, GeoInterface.geometries(obj))]
+        Dict("type" => string(GeoInterface.geotype(obj)),
+             "geometries" => map(geojson, GeoInterface.geometries(obj)))
     end
 
     function geojson(obj::GeoInterface.AbstractFeature)
-        result = ["type" => string(GeoInterface.geotype(obj)),
-                  "geometry" => geojson(GeoInterface.geometry(obj)),
-                  "properties" => copy(GeoInterface.properties(obj))]
+        result = Dict("type" => string(GeoInterface.geotype(obj)),
+                      "geometry" => geojson(GeoInterface.geometry(obj)),
+                      "properties" => copy(GeoInterface.properties(obj)))
         if haskey(result["properties"], "bbox")
             result["bbox"] = result["properties"]["bbox"]
             delete!(result["properties"], "bbox")
@@ -104,8 +105,8 @@ module GeoJSON
     end
 
     function geojson(obj::GeoInterface.AbstractFeatureCollection)
-        result = ["type" => string(GeoInterface.geotype(obj)),
-                  "features" => [map(geojson, GeoInterface.features(obj))]]
+        result = Dict("type" => string(GeoInterface.geotype(obj)),
+                      "features" => [map(geojson, GeoInterface.features(obj))])
         if GeoInterface.bbox(obj) != nothing
             result["bbox"] = GeoInterface.bbox(obj)
         end
